@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Hi</title>
+  <style type="text/css">
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    width: 100%;
+  }
+  
+  #canvas {
+    height: 100%;
+    width: 100%;
+  }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" height="637" width="480"></canvas>
+  <script type="text/javascript">
+  var MAX = 50;
+  var MAX_RADIO = 100;
+
+  var canvas = document.getElementById('canvas');
+  var context = canvas.getContext('2d');
+
+  var winHeight = canvas.height = document.body.offsetHeight;
+  var winWidth = canvas.width = document.body.offsetWidth;
+
+  var requestAnimFrame = (function() {
+    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function(callback) {
+      setTimeout(callback, 1000 / 60);
+    };
+  })();
+
+  window.onresize = function() {
+    winHeight = canvas.height = document.body.offsetHeight;
+    winWidth = canvas.width = document.body.offsetWidth;
+  };
+
+  var circles = [];
+  var circlesChip = [];
+
+  function start() {
+    if (circles.length < MAX) {
+      generateCircle();
+    }
+
+    context.clearRect(0, 0, winWidth, winHeight);
+
+    circles.forEach(function(circle) {
+      circle.centerX = circle.centerX + circle.disX;
+      circle.centerY = circle.centerY + circle.disY;
+      circle.radio = circle.radio + circle.disRadio;
+    });
+
+    circles = circles.filter(function(circle, index) {
+      if (circle.radio >= MAX_RADIO) {
+        generateChip(circle);
+        return false;
+      }
+
+      return circle.radio > 0 && circle.radio < MAX_RADIO && circle.centerX > circle.radio && circle.centerX < winWidth - circle.radio && circle.centerY > circle.radio && circle.centerY < winHeight - circle.radio;
+    });
+
+    drawCircles();
+
+    circlesChip.forEach(function(chips) {
+      chips.forEach(function(chip) {
+        var now = +new Date();
+        var time = (now - chip.start) / 60;
+        var displacement = chip.velocity * time + chip.acceleration * time * time;
+
+        var xDis = +(displacement * chip.xAngle).toFixed(2);
+        var yDis = +(displacement * chip.yAngle).toFixed(2);
+
+        chip.centerX += xDis;
+        chip.centerY += yDis;
+        chip.velocity += chip.acceleration * time;
+        chip.start = now;
+
+        chip.vertexs.forEach(function(vertex) {
+          vertex.x -= xDis;
+          vertex.y += yDis;
+        });
+      });
+    });
+
+    if (circlesChip.length > MAX) {
+      circlesChip.shift();
+    }
+
+    drawCircleShips();
+
+    requestAnimFrame(start);
+  }
+
+  requestAnimFrame(start);
+
+  function generateCircle() {
+    var radio = Math.floor(Math.random() * 50 + 20);
+    var centerX = Math.floor(winWidth * Math.random());
+    centerX = centerX < radio ? radio : centerX;
+    centerX = centerX > (winWidth - radio) ? (winWidth - radio) : centerX;
+
+    var centerY = Math.floor(winHeight * Math.random());
+    centerY = centerY < radio ? radio : centerY;
+    centerY = centerY > (winHeight - radio) ? (winHeight - radio) : centerY;
+
+    var color = 'rgba(' + Math.floor(Math.random() * 255) + ', ' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255) + ',' + (Math.floor((Math.random() * 10)) / 10 + 0.2) + ')';
+
+    circles.push({
+      centerX: centerX,
+      centerY: centerY,
+      radio: radio,
+      color: color,
+      disX: +(Math.random() * 2 - 1).toFixed(2) / 5,
+      disY: +(Math.random() * 2 - 1).toFixed(2) / 5,
+      disRadio: +(Math.random() * 2 - 1).toFixed(2) / 10,
+    });
+  }
+
+  function drawCircles() {
+    circles.forEach(function(circle) {
+      drawCircle(circle);
+    });
+  }
+
+  function drawCircle(circle) {
+    context.save();
+
+    context.beginPath();
+    context.arc(circle.centerX, circle.centerY, circle.radio, 0, 2 * Math.PI, false);
+    context.fillStyle = circle.color;
+    context.fill();
+    context.lineWidth = 1;
+    context.strokeStyle = circle.color;
+    context.stroke();
+
+    context.restore();
+  }
+
+  var maxChipRadio = 8;
+  var xAngle = [];
+  var yAngle = [];
+  for (var i = 0; i < 25; i++) {
+    xAngle.push(+Math.sin(Math.PI * 14 * i / 180).toFixed(2));
+    yAngle.push(+Math.cos(Math.PI * 14 * i / 180).toFixed(2));
+  }
+
+  function generateChip(circle) {
+    var chips = [];
+    for (var i = 0; i < 25; i++) {
+
+      var chipX = +(circle.centerX + circle.radio * xAngle[i]).toFixed(2);
+      var chipY = +(circle.centerY - circle.radio * yAngle[i]).toFixed(2);
+
+      chips.push({
+        centerX: chipX,
+        centerY: chipY,
+        angle: 15 * i,
+        xAngle: xAngle[i],
+        yAngle: yAngle[i],
+        velocity: Math.floor(Math.random() * 20),
+        acceleration: Math.floor(Math.random() * 10 - 15),
+        start: +new Date(),
+        color: circle.color,
+        vertexs: [{
+          x: chipX + Math.random() * +(maxChipRadio).toFixed(2),
+          y: chipY - Math.random() * +(maxChipRadio).toFixed(2)
+        }, {
+          x: chipX - Math.random() * +(maxChipRadio).toFixed(2),
+          y: chipY - Math.random() * +(maxChipRadio).toFixed(2)
+        }, {
+          x: chipX - Math.random() * +(maxChipRadio).toFixed(2),
+          y: chipY + Math.random() * +(maxChipRadio).toFixed(2)
+        }, {
+          x: chipX + Math.random() * +(maxChipRadio).toFixed(2),
+          y: chipY + Math.random() * +(maxChipRadio).toFixed(2)
+        }]
+      });
+    }
+
+    circlesChip.push(chips);
+  }
+
+  function drawCircleShips() {
+    circlesChip.forEach(function(chip) {
+      drawCircleShip(chip);
+    });
+  }
+
+  function drawCircleShip(chips) {
+    chips.forEach(function(chip) {
+      context.save();
+      context.fillStyle = chip.color;
+      context.strokeStyle = chip.color;
+
+      context.beginPath();
+
+      context.moveTo(chip.vertexs[0].x, chip.vertexs[0].y);
+      context.lineTo(chip.vertexs[1].x, chip.vertexs[1].y);
+      context.lineTo(chip.vertexs[2].x, chip.vertexs[2].y);
+      context.lineTo(chip.vertexs[3].x, chip.vertexs[3].y);
+      context.closePath();
+
+      context.fill();
+      context.lineWidth = 1;
+
+      context.stroke();
+
+      context.restore();
+    });
+  }
+  </script>
+</body>
+
+</html>
